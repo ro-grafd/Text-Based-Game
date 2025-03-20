@@ -7,8 +7,8 @@ public abstract class GameEntity
 
     public GameEntity(String name, String description)
     {
-        this.name = name;
-        this.description = description;
+        this.name = name.toLowerCase();// I want everything to lowercase
+        this.description = description.toLowerCase();
     }
 
     public String getName()
