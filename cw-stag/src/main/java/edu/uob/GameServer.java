@@ -1,18 +1,31 @@
 package edu.uob;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import com.alexmerz.graphviz.ParseException;
+import com.alexmerz.graphviz.Parser;
+import com.alexmerz.graphviz.objects.Graph;
+
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 
 public final class GameServer {
 
     private static final char END_OF_TRANSMISSION = 4;
+    File entitiesFile, actionsFile;
+    HashMap<String, Location> locations;
+    HashMap<String, Player> players;
+    HashMap<String, HashSet<Action>> actions;
+    String spawnLocation;
+    String currPlayer;
+    String result;
+    CommandParser commandParser;
+    ActionHandler actionHandler;
+    Action actionToDo;
+    List<String> entities;
 
     public static void main(String[] args) throws IOException {
         File entitiesFile = Paths.get("config" + File.separator + "basic-entities.dot").toAbsolutePath().toFile();
@@ -28,10 +41,25 @@ public final class GameServer {
     * @param entitiesFile The game configuration file containing all game entities to use in your game
     * @param actionsFile The game configuration file containing all game actions to use in your game
     */
-    public GameServer(File entitiesFile, File actionsFile) {
+    public GameServer(File entitiesFile, File actionsFile) throws ParseException, IOException {
         // TODO implement your server logic here
-    }
+        this.entitiesFile = entitiesFile;
+        this.actionsFile = actionsFile;
+        this.locations = new HashMap<>();
+        this.players = new HashMap<>();
+        this.actions = new HashMap<>();
+        this.result = "";
+        this.readEntitiesFile();
 
+    }
+    public void readEntitiesFile() throws FileNotFoundException, ParseException {
+        Parser parser = new Parser();
+        FileReader fileReader = new FileReader(this.entitiesFile);
+        parser.parse(fileReader);
+        Graph root = parser.getGraphs().get(0);
+        List<Graph> children = root.getSubgraphs();
+
+    }
     /**
     * Do not change the following method signature or we won't be able to mark your submission
     * This method handles all incoming game commands and carries out the corresponding actions.</p>
