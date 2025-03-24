@@ -1,9 +1,18 @@
 package edu.uob;
 
-import com.alexmerz.graphviz.ParseException;
+import com.alexmerz.graphviz.*;
 import com.alexmerz.graphviz.Parser;
+import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
+import com.alexmerz.graphviz.objects.Node;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -22,12 +31,12 @@ public final class GameServer {
     String spawnLocation;
     String currPlayer;
     String result;
-    CommandParser commandParser;
-    ActionHandler actionHandler;
+//    CommandParser commandParser;
+//    ActionHandler actionHandler;
     Action actionToDo;
     List<String> entities;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, ParseException, ParserConfigurationException, SAXException {
         File entitiesFile = Paths.get("config" + File.separator + "basic-entities.dot").toAbsolutePath().toFile();
         File actionsFile = Paths.get("config" + File.separator + "basic-actions.xml").toAbsolutePath().toFile();
         GameServer server = new GameServer(entitiesFile, actionsFile);
@@ -41,7 +50,7 @@ public final class GameServer {
     * @param entitiesFile The game configuration file containing all game entities to use in your game
     * @param actionsFile The game configuration file containing all game actions to use in your game
     */
-    public GameServer(File entitiesFile, File actionsFile) throws ParseException, IOException {
+    public GameServer(File entitiesFile, File actionsFile) throws ParseException, IOException, ParserConfigurationException, SAXException {
         // TODO implement your server logic here
         this.entitiesFile = entitiesFile;
         this.actionsFile = actionsFile;
@@ -50,15 +59,46 @@ public final class GameServer {
         this.actions = new HashMap<>();
         this.result = "";
         this.readEntitiesFile();
-
+        this.readActionsFile();
     }
     public void readEntitiesFile() throws FileNotFoundException, ParseException {
         Parser parser = new Parser();
         FileReader fileReader = new FileReader(this.entitiesFile);
         parser.parse(fileReader);
-        Graph root = parser.getGraphs().get(0);
-        List<Graph> children = root.getSubgraphs();
+        Graph rootGraph = parser.getGraphs().get(0);
+        List<Graph> subGraphs = rootGraph.getSubgraphs();
+        List<Graph> locationClusters = subGraphs.get(0).getSubgraphs();
+        List<Edge> connections = subGraphs.get(1).getEdges();
+        this.spawnLocation = locationClusters.get(0).getNodes(false).get(0).getId().getId().toLowerCase();
+        for(Graph cluster: locationClusters){
+            Node node = cluster.getNodes(false).get(0);
+            this.locations.put(node.getId().getId().toLowerCase(), new Location(node, cluster));
+        }
+        for(Edge connection: connections){
+            Node source = connection.getSource().getNode();
+            String sourceName = source.getId().getId().toLowerCase();
+            Node destination = connection.getTarget().getNode();
+            String destinationName = destination.getId().getId().toLowerCase();
+            this.locations.get(sourceName).addAccessibleLocation(destinationName);
+        }
+    }
 
+    public void readActionsFile() throws IOException, ParseException, ParserConfigurationException, SAXException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse(this.actionsFile);
+        Element root = document.getDocumentElement();
+        NodeList actions = root.getChildNodes();
+        for(int i = 1; i < actions.getLength(); i+=2) {
+            Action currentAction = new Action((Element)actions.item(i));
+            //map action to trigger phrases
+            for(String keyphrase: currentAction.getTriggers()) {
+                if(!this.actions.containsKey(keyphrase)) {
+                    this.actions.put(keyphrase, new HashSet<>());
+                }
+                this.actions.get(keyphrase).add(currentAction);
+            }
+        }
     }
     /**
     * Do not change the following method signature or we won't be able to mark your submission
