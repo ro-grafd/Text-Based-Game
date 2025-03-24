@@ -92,11 +92,11 @@ public final class GameServer {
         for(int i = 1; i < actions.getLength(); i+=2) {
             Action currentAction = new Action((Element)actions.item(i));
             //map action to trigger phrases
-            for(String keyphrase: currentAction.getTriggers()) {
-                if(!this.actions.containsKey(keyphrase)) {
-                    this.actions.put(keyphrase, new HashSet<>());
+            for(String keyPhrase: currentAction.getTriggers()) {
+                if(!this.actions.containsKey(keyPhrase)) {
+                    this.actions.put(keyPhrase, new HashSet<>());
                 }
-                this.actions.get(keyphrase).add(currentAction);
+                this.actions.get(keyPhrase).add(currentAction);
             }
         }
     }
