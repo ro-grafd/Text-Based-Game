@@ -26,6 +26,9 @@ public class Location extends GameEntity{
         this.accessibleLocations.add(location);
     }
 
+    public HashSet<String> getPlayers(){
+        return players;
+    }
     private void addClusterEntities(Graph location){
         
     }

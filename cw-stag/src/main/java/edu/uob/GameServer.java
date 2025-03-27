@@ -31,7 +31,7 @@ public final class GameServer {
     String spawnLocation;
     String currPlayer;
     String result;
-//    CommandParser commandParser;
+    ExtractCommand extractCommand;
 //    ActionHandler actionHandler;
     Action actionToDo;
     List<String> entities;
@@ -108,9 +108,20 @@ public final class GameServer {
     */
     public String handleCommand(String command) {
         // TODO implement your server logic here
+        this.extractCommand = new ExtractCommand(command);
+        this.currPlayer = extractCommand.getPlayerName();
+        if(!this.players.containsKey(this.currPlayer)) {
+            this.players.put(currPlayer, new Player(this.currPlayer, this.spawnLocation));
+            this.locations.get(spawnLocation).getPlayers().add(this.currPlayer); // not adding player to clusterEntities as player is not entity!
+        }
+        this.performAction();
         return "";
     }
+//    ./mvnw exec:java@client -Dexec.args="rohit"
 
+    public void performAction() {
+
+    }
     /**
     * Do not change the following method signature or we won't be able to mark your submission
     * Starts a *blocking* socket server listening for new connections.
