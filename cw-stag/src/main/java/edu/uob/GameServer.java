@@ -54,12 +54,18 @@ public final class GameServer {
         // TODO implement your server logic here
         this.entitiesFile = entitiesFile;
         this.actionsFile = actionsFile;
+        this.instantiateMemory();
+        this.readFiles();
+    }
+    public void readFiles() throws ParseException, IOException, ParserConfigurationException, SAXException {
+        this.readEntitiesFile();
+        this.readActionsFile();
+    }
+    public void instantiateMemory() {
         this.locations = new HashMap<>();
         this.players = new HashMap<>();
         this.actions = new HashMap<>();
         this.result = "";
-        this.readEntitiesFile();
-        this.readActionsFile();
     }
     public void readEntitiesFile() throws FileNotFoundException, ParseException {
         Parser parser = new Parser();
@@ -108,13 +114,17 @@ public final class GameServer {
     */
     public String handleCommand(String command) {
         // TODO implement your server logic here
-        this.extractCommand = new ExtractCommand(command);
-        this.currPlayer = extractCommand.getPlayerName();
-        if(!this.players.containsKey(this.currPlayer)) {
-            this.players.put(currPlayer, new Player(this.currPlayer, this.spawnLocation));
-            this.locations.get(spawnLocation).getPlayers().add(this.currPlayer); // not adding player to clusterEntities as player is not entity!
+        try{
+            this.extractCommand = new ExtractCommand(command, this.actions.keySet());
+            this.currPlayer = extractCommand.getPlayerName();
+            if(!this.players.containsKey(currPlayer)) {
+                this.players.put(currPlayer, new Player(currPlayer, this.spawnLocation));
+                this.locations.get(spawnLocation).getPlayers().add(currPlayer); // not adding player to clusterEntities as player is not entity!
+            }
+            this.performAction();
+        }catch(GameException e){
+            return e.getLocalizedMessage();
         }
-        this.performAction();
         return "";
     }
 //    ./mvnw exec:java@client -Dexec.args="rohit"
