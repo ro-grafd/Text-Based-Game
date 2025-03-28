@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class GameServer {
 
@@ -121,16 +122,46 @@ public final class GameServer {
                 this.players.put(currPlayer, new Player(currPlayer, this.spawnLocation));
                 this.locations.get(spawnLocation).getPlayers().add(currPlayer); // not adding player to clusterEntities as player is not entity!
             }
+            this.extractCommand.setTriggerWord(this.actions.keySet());
             this.performAction();
         }catch(GameException e){
             return e.getLocalizedMessage();
         }
-        return "";
+        return this.result;
     }
 //    ./mvnw exec:java@client -Dexec.args="rohit"
 
-    public void performAction() {
-
+    public void performAction()   {
+        String triggerWord = this.extractCommand.getTriggerWord();
+        switch(triggerWord) {
+            case "inv":
+            case "inventory":
+                handleInventory();
+                break;
+            case "get":
+                handleGet();
+                break;
+            default:
+        }
+    }
+    public void handleGet(){
+        String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
+        Set<String> accessibleArtefacts = this.locations.get(currPlayerLocation).getArtefacts().keySet();
+        this.extractCommand.checkForArtefacts();
+        Artefact artefact = this.locations.get(currPlayerLocation).getArtefacts().get(extractCommand.getArtefact());
+    }
+    public void handleInventory() {
+        if(!this.players.get(this.currPlayer).getPersonalInventory().isEmpty())
+        {
+            StringBuilder stringBuilder = new StringBuilder("You have:\n");
+            HashMap<String,Artefact> personalInv = this.players.get(currPlayer).getPersonalInventory();
+            for(String artefactName : personalInv.keySet()) {
+                stringBuilder.append(artefactName).append("\n");
+            }
+            this.result = stringBuilder.toString();
+        }else {
+            this.result = "Got nothing in your inventory mate";
+        }
     }
     /**
     * Do not change the following method signature or we won't be able to mark your submission

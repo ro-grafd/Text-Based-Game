@@ -10,11 +10,40 @@ public class ExtractCommand {
     String triggerWord;
     String cookedCommand;
     List<String> tokenisedCommand;
+    HashSet<String> triggerWordSet;
+    String artefact;
     public ExtractCommand(String rawCommand, Set<String> triggerWords) throws GameException.InvalidName {
         this.rawCommand = rawCommand;
         this.extractPlayerName();
         this.removePlayerName();
         this.tokenise(triggerWords);
+    }
+    public void checkForArtefacts
+    public void setTriggerWord(Set<String> givenTriggerWords) throws GameException.TriggerException {
+        // search in tokenisedCommand the triggerWord and it should be basic or in the given actions.xml file ???
+        // List<String> tokenisedCommand
+        int builtInTriggerWord = 0;
+        int extractedTriggerWord = 0;
+        this.triggerWordSet = new HashSet<String>();
+        for(String token : tokenisedCommand) {
+            if(isBuiltInCommand(token)) {
+                triggerWordSet.add(token);
+            }
+            if(isExtra(token, givenTriggerWords)) {
+                triggerWordSet.add(token);
+            }
+        }
+        if(triggerWordSet.size() > 1) {
+            throw new GameException.TriggerException();
+        }
+        if(triggerWordSet.isEmpty()) {
+            throw new GameException.TriggerException();
+        }
+        this.triggerWord = triggerWordSet.iterator().next();
+    }
+    public String getTriggerWord()
+    {
+        return triggerWord;
     }
     private void tokenise(Set<String> triggerWords) {
         tokenisedCommand = new Vector<>(); // Use Vector instead of ArrayList
@@ -57,6 +86,7 @@ public class ExtractCommand {
     private void removePlayerName()
     {
         this.cookedCommand = this.rawCommand.replaceFirst(this.playerName, "").toLowerCase();
+        this.cookedCommand = this.cookedCommand.replaceAll("[^a-z\\s]", " ");
     }
     private void extractPlayerName() throws GameException.InvalidName {
         this.playerName = this.rawCommand.split(":")[0];
@@ -67,5 +97,19 @@ public class ExtractCommand {
 
     public String getPlayerName() {
         return playerName;
+    }
+    private boolean isBuiltInCommand(String command) {
+        switch (command) {
+            case "inv", "inventory", "get", "drop", "look", "goto":
+            {
+                return true;
+            }
+            default: {
+                return false;
+            }
+        }
+    }
+    private boolean isExtra(String command, Set<String> triggerWords) {
+        return triggerWords.contains(command);
     }
 }
