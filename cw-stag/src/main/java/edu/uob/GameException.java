@@ -43,7 +43,13 @@ public class GameException extends Exception {
             super("Insufficient or restricted access to " + resource);
         }
     }
-
+    public static class TriggerException extends GameException {
+        @Serial
+        private static final long serialVersionUID = 50L;
+        public TriggerException() {
+            super("Trigger word is either nothing or more than one");
+        }
+    }
     public static class InvalidName extends GameException {
         @Serial
         private static final long serialVersionUID = 46L;
