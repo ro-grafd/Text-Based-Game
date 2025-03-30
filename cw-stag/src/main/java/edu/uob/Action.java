@@ -20,6 +20,7 @@ public class Action
         this.constructSet(entitiesInvolved, "subjects", "entity", actionElement);
         this.constructSet(entitiesUsed, "consumed", "entity", actionElement);
         this.constructSet(entitiesMade, "produced", "entity", actionElement);
+        this.actionStatement = actionElement.getElementsByTagName("narration").item(0).getTextContent();
     }
     private void constructSet(HashSet<String>setToConstruct, String outerTag, String innerTag, Element actionElement)
     {
@@ -30,6 +31,7 @@ public class Action
             setToConstruct.add(innerTags.item(i).getTextContent().toLowerCase());
         }
     }
+
     public HashSet<String> getEntitiesInvolved() {
         return entitiesInvolved;
     }

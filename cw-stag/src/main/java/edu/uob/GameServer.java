@@ -17,10 +17,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public final class GameServer {
 
@@ -33,7 +30,7 @@ public final class GameServer {
     String currPlayer;
     String result;
     ExtractCommand extractCommand;
-//    ActionHandler actionHandler;
+    ActionHandler actionHandler;
     Action actionToDo;
     List<String> entities;
 
@@ -51,16 +48,24 @@ public final class GameServer {
     * @param entitiesFile The game configuration file containing all game entities to use in your game
     * @param actionsFile The game configuration file containing all game actions to use in your game
     */
-    public GameServer(File entitiesFile, File actionsFile) throws ParseException, IOException, ParserConfigurationException, SAXException {
+    public GameServer(File entitiesFile, File actionsFile)  {
         // TODO implement your server logic here
         this.entitiesFile = entitiesFile;
         this.actionsFile = actionsFile;
         this.instantiateMemory();
         this.readFiles();
     }
-    public void readFiles() throws ParseException, IOException, ParserConfigurationException, SAXException {
-        this.readEntitiesFile();
-        this.readActionsFile();
+    public void readFiles()  {
+        try {
+            this.readEntitiesFile();
+        } catch (FileNotFoundException | ParseException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            this.readActionsFile();
+        } catch (ParserConfigurationException | IOException | SAXException e) {
+            throw new RuntimeException(e);
+        }
     }
     public void instantiateMemory() {
         this.locations = new HashMap<>();
@@ -90,7 +95,7 @@ public final class GameServer {
         }
     }
 
-    public void readActionsFile() throws IOException, ParseException, ParserConfigurationException, SAXException {
+    public void readActionsFile() throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document document = builder.parse(this.actionsFile);
@@ -131,7 +136,7 @@ public final class GameServer {
     }
 //    ./mvnw exec:java@client -Dexec.args="rohit"
 
-    public void performAction()   {
+    public void performAction()  throws GameException {
         String triggerWord = this.extractCommand.getTriggerWord();
         switch(triggerWord) {
             case "inv":
@@ -141,14 +146,142 @@ public final class GameServer {
             case "get":
                 handleGet();
                 break;
+            case "look":
+                handleLook();
+                break;
+            case "goto":
+                handleGoto();
+                break;
+            case "drop":
+                handleDrop();
+                break;
             default:
+                HashSet<Action> permissableActions = new HashSet<>();
+                for(String trigger : extractCommand.getTriggerWordSet())
+                {
+                    permissableActions.addAll(actions.get(trigger));
+                }
+                this.actionHandler = new ActionHandler(permissableActions, this.extractCommand.getTokenisedCommand(),triggerWord);
+                String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
+                this.actionToDo = actionHandler.findToDoAction(this.locations.get(currPlayerLocation), this.players.get(currPlayer).getPersonalInventory());
+                this.executeAction();
         }
     }
-    public void handleGet(){
+    public void executeAction() {
+        HashSet<String> consumed = this.actionToDo.getEntitiesUsed();
+        HashSet<String> produced = this.actionToDo.getEntitiesMade();
+        this.handleConsumedProduced(true, consumed);
+        this.handleConsumedProduced(false,produced);
+        this.result = this.actionToDo.getActionStatement();
+    }
+    public void handleConsumedProduced(boolean hasConsumed, HashSet<String> consumed) {
+        String locationForConsumed;
+        if(hasConsumed){
+            locationForConsumed = "storeroom";
+        }else{
+            locationForConsumed = this.players.get(currPlayer).getPresentLocation();
+        }
+        for(String consumedWord: consumed){
+            if(this.players.get(currPlayer).getPersonalInventory().containsKey(consumedWord) && hasConsumed){
+                Artefact toRemove = this.players.get(currPlayer).getPersonalInventory().remove(consumedWord);
+            }else{
+                this.handleEntityState(consumedWord, hasConsumed, locationForConsumed);
+            }
+        }
+    }
+    public void handleEntityState(String entityName, boolean hasConsumed, String locationForConsumed) {
+        GameEntity consumedEntity = null;
+        for (Map.Entry<String, Location> entry : this.locations.entrySet()) {
+            String key = entry.getKey();
+            Location value = entry.getValue();
+            List<String> locationEntities = value.getAvailableEntities();
+            locationEntities.remove(key);
+            if (locationEntities.contains(entityName)) {
+                consumedEntity = value.entityConsumed(entityName);
+            }
+        }
+        String currLocation = this.players.get(currPlayer).getPresentLocation();
+        if(this.locations.containsKey(entityName) && !entityName.equalsIgnoreCase(currLocation)) {
+            if(!hasConsumed) {
+                this.locations.get(currLocation).addAccessibleLocation(entityName);
+            } else {
+                this.locations.get(currLocation).removeAccessibleLocation(entityName);
+            }
+        } else {
+            this.addEntityToLocation(locationForConsumed, consumedEntity);
+        }
+    }
+    public void addEntityToLocation(String locationForConsumed, GameEntity consumedEntity) {
+        Location location = this.locations.get(locationForConsumed);
+        if(consumedEntity != null) {
+            {
+                if(consumedEntity instanceof Artefact) {
+                    location.getArtefacts().put(consumedEntity.getName(), (Artefact)consumedEntity);
+                }else if(consumedEntity instanceof Character)
+                {
+                    location.getCharacters().put(consumedEntity.getName(), (Character)consumedEntity);
+                }else if(consumedEntity instanceof Furniture)
+                {
+                    location.getFurniture().put(consumedEntity.getName(), (Furniture)consumedEntity);
+                }
+            }
+        }
+    }
+    public void handleDrop() throws GameException {
+        Set<String> entireArtefacts = this.getEntireGameArtefacts();
+        Set<String> accessibleArtefactsInventory = this.players.get(currPlayer).getPersonalInventory().keySet();
+        extractCommand.checkForArtefacts(entireArtefacts, accessibleArtefactsInventory);
+        Artefact artefactToDrop = this.players.get(currPlayer).getPersonalInventory().get(extractCommand.getArtefact());
+        this.players.get(currPlayer).getPersonalInventory().remove(extractCommand.getArtefact());
+        String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
+        this.locations.get(currPlayerLocation).getArtefacts().put(artefactToDrop.getName(), artefactToDrop);
+        StringBuilder builder = new StringBuilder();
+        builder.append("You dropped a ");
+        builder.append(artefactToDrop.getName());
+        this.result = builder.toString();
+    }
+    public void handleGoto() throws GameException {
+        String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
+        this.extractCommand.checkForLocation(this.locations.keySet(), this.locations.get(currPlayerLocation).getAccessibleLocations());
+        this.locations.get(currPlayerLocation).getPlayers().remove(currPlayer);
+        String toReach = extractCommand.getToReach();
+        this.players.get(currPlayer).setPresentLocation(toReach);
+        this.locations.get(toReach).getPlayers().add(currPlayer);
+        this.result = this.locations.get(toReach).toString(currPlayer);
+    }
+    public void handleLook() throws GameException {
+        String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
+        this.result = this.locations.get(currPlayerLocation).toString(currPlayer);
+    }
+    public void handleGet() throws GameException {
+        Set<String> entireArtefacts = this.getEntireGameArtefacts();
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
         Set<String> accessibleArtefacts = this.locations.get(currPlayerLocation).getArtefacts().keySet();
-        this.extractCommand.checkForArtefacts();
+        this.extractCommand.checkForArtefacts(entireArtefacts,accessibleArtefacts);
         Artefact artefact = this.locations.get(currPlayerLocation).getArtefacts().get(extractCommand.getArtefact());
+        this.locations.get(currPlayerLocation).getArtefacts().remove(extractCommand.getArtefact());
+        this.players.get(currPlayer).addPersonalArtefact(artefact);
+        StringBuilder builder = new StringBuilder();
+        builder.append("You picked up a ");
+        builder.append(artefact.getName());
+        this.result = builder.toString();
+    }
+    private Set<String> getEntireGameArtefacts() {
+        Set<String> artefacts = new HashSet<>();
+
+        // Iterate through locations
+        for (Map.Entry<String, Location> locationEntry : this.locations.entrySet()) {
+            Location location = locationEntry.getValue();
+            artefacts.addAll(location.getArtefacts().keySet());
+        }
+
+        // Iterate through players
+        for (Map.Entry<String, Player> playerEntry : this.players.entrySet()) {
+            Player player = playerEntry.getValue();
+            artefacts.addAll(player.getPersonalInventory().keySet());
+        }
+
+        return artefacts;
     }
     public void handleInventory() {
         if(!this.players.get(this.currPlayer).getPersonalInventory().isEmpty())

@@ -21,6 +21,10 @@ public class Player {
         return presentLocation;
     }
 
+    public void setPresentLocation(String presentLocation) {
+        this.presentLocation = presentLocation;
+    }
+
     public HashMap<String,Artefact> getPersonalInventory() {
         return personalInventory;
     }

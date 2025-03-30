@@ -30,8 +30,8 @@ public class GameException extends Exception {
         @Serial
         private static final long serialVersionUID = 44L;
 
-        public ContextualConstraint(String reason) {
-            super("Game state violation: " + reason);
+        public ContextualConstraint() {
+            super("Game state violation ");
         }
     }
 
@@ -76,8 +76,8 @@ public class GameException extends Exception {
         @Serial
         private static final long serialVersionUID = 48L;
 
-        public NavigationError(String destination) {
-            super("Navigation to " + destination + " is not possible");
+        public NavigationError() {
+            super("Navigation is not possible");
         }
     }
 
@@ -85,8 +85,8 @@ public class GameException extends Exception {
         @Serial
         private static final long serialVersionUID = 49L;
 
-        public InventoryManagementError(String action) {
-            super("Inventory " + action + " failed");
+        public InventoryManagementError() {
+            super("Inventory  failed");
         }
     }
 }

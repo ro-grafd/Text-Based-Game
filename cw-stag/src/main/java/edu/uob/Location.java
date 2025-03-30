@@ -4,9 +4,7 @@ import com.alexmerz.graphviz.objects.Graph;
 import com.alexmerz.graphviz.objects.Node;
 
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 public class Location extends GameEntity{
     HashMap<String, Furniture> furniture;
@@ -23,7 +21,28 @@ public class Location extends GameEntity{
         this.accessibleLocations = new HashSet<>();
         addClusterEntities(cluster);
     }
-
+    public GameEntity entityConsumed(String command)
+    {
+        if(this.artefacts.containsKey(command))
+        {
+            return this.artefacts.remove(command);
+        }else if(this.furniture.containsKey(command))
+        {
+            return this.furniture.remove(command);
+        }else if(this.characters.containsKey(command))
+        {
+            return this.characters.remove(command);
+        }
+        return null;
+    }
+    public List<String> getAvailableEntities() {
+        List<String> availableEntities = new LinkedList<>();
+        availableEntities.add(this.getName());
+        availableEntities.addAll(this.artefacts.keySet());
+        availableEntities.addAll(this.characters.keySet());
+        availableEntities.addAll(this.furniture.keySet());
+        return availableEntities;
+    }
     public void addAccessibleLocation(String location){
         this.accessibleLocations.add(location);
     }
@@ -56,14 +75,81 @@ public class Location extends GameEntity{
                 if(clusterEntityId.equalsIgnoreCase("furniture"))
                 {
                     this.furniture.put(leafNodeName, new Furniture(leafNodeName, leafNodeDescription));
-                }else if(clusterEntityId.equalsIgnoreCase("character"))
+                }else if(clusterEntityId.equalsIgnoreCase("characters"))
                 {
                     this.characters.put(leafNodeName, new Character(leafNodeName, leafNodeDescription));
-                }else if(clusterEntityId.equalsIgnoreCase("artefact"))
+                }else if(clusterEntityId.equalsIgnoreCase("artefacts"))
                 {
                     this.artefacts.put(leafNodeName, new Artefact(leafNodeName, leafNodeDescription));
                 }
             }
         }
+    }
+    public String toString(String currPlayer) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("You are in ").append(this.getDescription()).append(".\nYou can see: ");
+
+        // Handle furniture items with comma management
+        int furnitureCount = 0;
+        for (Map.Entry<String, Furniture> entry : this.furniture.entrySet()) {
+            builder.append(entry.getValue().getDescription());
+            furnitureCount++;
+            if (furnitureCount < this.furniture.size()) {
+                builder.append(", ");
+            }
+        }
+
+        // Add comma between furniture and artefacts only if both exist
+        if (!this.furniture.isEmpty() && !this.artefacts.isEmpty()) {
+            builder.append(", ");
+        }
+
+        // Handle artefact items with comma management
+        int artefactCount = 0;
+        for (Map.Entry<String, Artefact> entry : this.artefacts.entrySet()) {
+            builder.append(entry.getValue().getDescription());
+            artefactCount++;
+            if (artefactCount < this.artefacts.size()) {
+                builder.append(", ");
+            }
+        }
+
+        // Add comma between artefacts and characters only if both exist
+        if ((!this.furniture.isEmpty() || !this.artefacts.isEmpty()) && !this.characters.isEmpty()) {
+            builder.append(", ");
+        }
+
+        // Handle character items with comma management
+        int characterCount = 0;
+        for (Map.Entry<String, Character> entry : this.characters.entrySet()) {
+            builder.append(entry.getValue().getDescription());
+            characterCount++;
+            if (characterCount < this.characters.size()) {
+                builder.append(", ");
+            }
+        }
+
+        builder.append("\nOther players at this location:\n");
+
+        // Handle players listing
+        for (String player : this.players) {
+            if (!player.equals(currPlayer)) {
+                builder.append(player).append("\n");
+            }
+        }
+
+        builder.append("You can access from here: ");
+
+        // Handle accessible locations with comma management
+        int locationCount = 0;
+        for (String loc : this.accessibleLocations) {
+            builder.append(loc);
+            locationCount++;
+            if (locationCount < this.accessibleLocations.size()) {
+                builder.append(", ");
+            }
+        }
+
+        return builder.toString();
     }
 }

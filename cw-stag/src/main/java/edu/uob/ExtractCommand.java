@@ -12,13 +12,72 @@ public class ExtractCommand {
     List<String> tokenisedCommand;
     HashSet<String> triggerWordSet;
     String artefact;
+    String toReach;
     public ExtractCommand(String rawCommand, Set<String> triggerWords) throws GameException.InvalidName {
         this.rawCommand = rawCommand;
         this.extractPlayerName();
         this.removePlayerName();
         this.tokenise(triggerWords);
     }
-    public void checkForArtefacts
+    public void checkForLocation(Set<String> allLocations, Set<String> accessibleLocations) throws GameException{
+        this.getEntity(allLocations, "location");
+        if(!accessibleLocations.contains(this.toReach)){
+            throw new GameException.NavigationError();
+        }
+    }
+    public void checkForArtefacts(Set<String> entireArtefacts, Set<String> accessibleArtefacts) throws GameException{
+        this.getEntity(entireArtefacts, "artefact");
+        boolean itemAvailable = false;
+        for (String item : accessibleArtefacts) {
+            if (item.equals(this.artefact)) {
+                itemAvailable = true;
+                break;
+            }
+        }
+
+        if (!itemAvailable) {
+            if (this.triggerWord.equals("get")) {
+                throw new GameException.InventoryManagementError();
+            } else if (this.triggerWord.equals("drop")) {
+                throw new GameException.InventoryManagementError();
+            }
+        }
+    }
+    private void getEntity(Set<String> entireArtefacts, String entityName) throws GameException {
+        HashSet<String> entities = new HashSet<>();
+
+        // Replace forEach with traditional for loop
+        for (String token : tokenisedCommand) {
+            if (isExtra(token, entireArtefacts)) {
+                entities.add(token);
+            }
+        }
+
+        // Multiple entities check
+        if (entities.size() > 1) {
+            if (entityName.equals("location")) {
+                throw new GameException.NavigationError();
+            } else {
+                throw new GameException.InventoryManagementError();
+            }
+        }
+
+        // Empty entities check
+        if (entities.isEmpty()) {
+            if (entityName.equals("location")) {
+                throw new GameException.NavigationError();
+            } else {
+                throw new GameException.InventoryManagementError();
+            }
+        }
+
+        // Set destination or artefact
+        if (entityName.equals("location")) {
+            this.toReach = (String) entities.toArray()[0];
+        } else {
+            this.artefact = (String) entities.toArray()[0];
+        }
+    }
     public void setTriggerWord(Set<String> givenTriggerWords) throws GameException.TriggerException {
         // search in tokenisedCommand the triggerWord and it should be basic or in the given actions.xml file ???
         // List<String> tokenisedCommand
@@ -111,5 +170,17 @@ public class ExtractCommand {
     }
     private boolean isExtra(String command, Set<String> triggerWords) {
         return triggerWords.contains(command);
+    }
+    public String getArtefact() {
+        return artefact;
+    }
+    public String getToReach() {
+        return toReach;
+    }
+    public HashSet<String> getTriggerWordSet() {
+        return triggerWordSet;
+    }
+    public List<String> getTokenisedCommand() {
+        return tokenisedCommand;
     }
 }
