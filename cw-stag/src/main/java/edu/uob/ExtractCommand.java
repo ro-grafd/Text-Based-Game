@@ -73,9 +73,9 @@ public class ExtractCommand {
 
         // Set destination or artefact
         if (entityName.equals("location")) {
-            this.toReach = (String) entities.toArray()[0];
+            this.toReach = (String) entities.iterator().next();
         } else {
-            this.artefact = (String) entities.toArray()[0];
+            this.artefact = (String) entities.iterator().next();
         }
     }
     public void setTriggerWord(Set<String> givenTriggerWords) throws GameException.TriggerException {
@@ -105,9 +105,10 @@ public class ExtractCommand {
         return triggerWord;
     }
     private void tokenise(Set<String> triggerWords) {
-        tokenisedCommand = new Vector<>(); // Use Vector instead of ArrayList
+        // Initialize tokenisedCommand as a LinkedList if it's not already initialized
+        tokenisedCommand = new LinkedList<>();
         String command = this.cookedCommand.trim();
-        List<String> words = new Vector<>(); // Temporary list for processing
+        List<String> words = new LinkedList<>(); // Temporary list for processing
         StringBuilder word = new StringBuilder();
 
         // Manually split the string into words
@@ -126,19 +127,56 @@ public class ExtractCommand {
         }
 
         // Merging adjacent words based on triggers
-        for (int i = 0; i < words.size() - 1; i++) {
-            String token = words.get(i);
-            String nextToken = words.get(i + 1);
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            Iterator<String> iterator = words.iterator();
+            if (!iterator.hasNext()) continue;
 
-            if (triggerWords.contains(token + " " + nextToken)) {
-                words.set(i, token + " " + nextToken);
-                words.remove(i + 1);
-                i--; // Adjust index after merging
+            String current = iterator.next();
+            while (iterator.hasNext()) {
+                String next = iterator.next();
+
+                // Use StringBuilder instead of string concatenation
+                StringBuilder combinedToken = new StringBuilder(current);
+                combinedToken.append(" ").append(next);
+
+                if (triggerWords.contains(combinedToken.toString())) {
+                    // Remove both tokens
+                    iterator.remove(); // Removes 'next'
+
+                    // Need to rebuild the list without 'current' and with the new combined token
+                    List<String> newWords = new LinkedList<>();
+                    Iterator<String> rebuildIterator = words.iterator();
+                    boolean addedCombined = false;
+
+                    while (rebuildIterator.hasNext()) {
+                        String token = rebuildIterator.next();
+                        if (token == current && !addedCombined) {
+                            newWords.add(combinedToken.toString());
+                            addedCombined = true;
+                            rebuildIterator.remove();
+                        }
+                    }
+
+                    // Add any remaining tokens
+                    for (String token : words) {
+                        newWords.add(token);
+                    }
+
+                    words = newWords;
+                    changed = true;
+                    break;
+                }
+
+                current = next;
             }
         }
 
         // Set tokenisedCommand to the processed words
-        tokenisedCommand.addAll(words);
+        for (String token : words) {
+            tokenisedCommand.add(token);
+        }
     }
 
 
@@ -148,7 +186,8 @@ public class ExtractCommand {
         this.cookedCommand = this.cookedCommand.replaceAll("[^a-z\\s]", " ");
     }
     private void extractPlayerName() throws GameException.InvalidName {
-        this.playerName = this.rawCommand.split(":")[0];
+        int colonIndex = this.rawCommand.indexOf(':');
+        if (colonIndex != -1)  this.playerName = this.rawCommand.substring(0, colonIndex);
         if(this.playerName.matches(".*[^a-zA-Z\\s-'].*")) {
             throw new GameException.InvalidName();
         }
