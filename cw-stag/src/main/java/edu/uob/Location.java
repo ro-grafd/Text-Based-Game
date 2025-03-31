@@ -19,7 +19,7 @@ public class Location extends GameEntity{
         this.artefacts = new HashMap<>();
         this.players = new HashSet<>();
         this.accessibleLocations = new HashSet<>();
-        addClusterEntities(cluster);
+        this.addClusterEntities(cluster);
     }
     public GameEntity entityConsumed(String command)
     {

@@ -39,8 +39,8 @@ public class GameException extends Exception {
         @Serial
         private static final long serialVersionUID = 45L;
 
-        public ResourceLimitation(String resource) {
-            super("Insufficient or restricted access to " + resource);
+        public ResourceLimitation() {
+            super("Insufficient or restricted access to ");
         }
     }
     public static class TriggerException extends GameException {
@@ -58,17 +58,14 @@ public class GameException extends Exception {
             super("Character name violates naming protocol");
         }
 
-        public InvalidName(String additionalDetails) {
-            super("Invalid character name: " + additionalDetails);
-        }
     }
 
     public static class InteractionError extends GameException {
         @Serial
         private static final long serialVersionUID = 47L;
 
-        public InteractionError(String interaction) {
-            super("Cannot complete " + interaction + " interaction");
+        public InteractionError() {
+            super("Cannot complete interaction");
         }
     }
 

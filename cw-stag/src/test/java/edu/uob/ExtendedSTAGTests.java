@@ -30,40 +30,92 @@ class ExtendedSTAGTests {
 
     // A lot of tests will probably check the game state using 'look' - so we better make sure 'look' works well !
     @Test
-    void testLook() {
-        String response = sendCommandToServer("simon: look");
+    void testGoto() {
+        sendCommandToServer("rohit: goto forest");
+        String response = sendCommandToServer("rohit: look");
         response = response.toLowerCase();
-        assertTrue(response.contains("cabin"), "Did not see the name of the current room in response to look");
-        assertTrue(response.contains("log cabin"), "Did not see a description of the room in response to look");
-        assertTrue(response.contains("magic potion"), "Did not see a description of artifacts in response to look");
-        assertTrue(response.contains("wooden trapdoor"), "Did not see description of furniture in response to look");
-        assertTrue(response.contains("forest"), "Did not see available paths in response to look");
+        assertTrue(response.contains("tall pine tree"), "Failed to move to forest - expected to see 'tall pine tree'");
     }
 
-    // Test that we can pick something up and that it appears in our inventory
     @Test
-    void testGet()
-    {
-        String response;
-        sendCommandToServer("simon: get potion");
-        response = sendCommandToServer("simon: inv");
+    void testAdventureStory() {
+        // Step 1: Start in the cabin and check surroundings
+        sendCommandToServer("rohit: look");
+        String response = sendCommandToServer("rohit: look");
         response = response.toLowerCase();
-        assertTrue(response.contains("potion"), "Did not see the potion in the inventory after an attempt was made to get it");
-        response = sendCommandToServer("simon: look");
-        response = response.toLowerCase();
-        assertFalse(response.contains("potion"), "Potion is still present in the room after an attempt was made to get it");
+        assertTrue(response.contains("locked wooden trapdoor"), "Failed: Expected to see 'locked wooden trapdoor' in the cabin");
+
+        // Step 2: Move to the forest
+        sendCommandToServer("rohit: goto forest");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("tall pine tree"), "Failed: Expected to see 'tall pine tree' in the forest");
+
+        // Step 3: Pick up the key
+        sendCommandToServer("rohit: get key");
+        response = sendCommandToServer("rohit: inv");
+        assertTrue(response.contains("key"), "Failed: Key not found in inventory");
+
+        // Step 4: Return to the cabin and unlock trapdoor
+        sendCommandToServer("rohit: goto cabin");
+        sendCommandToServer("rohit: unlock trapdoor");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("cellar"), "Failed: Expected 'cellar' to be accessible");
+
+        // Step 5: Enter the cellar and encounter the elf
+        sendCommandToServer("rohit: goto cellar");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("angry looking elf"), "Failed: Expected to see 'angry looking elf' in the cellar");
+
+        // Step 6: Pick up the coin and pay the elf
+        sendCommandToServer("rohit: goto cabin");
+        sendCommandToServer("rohit: get coin");
+        sendCommandToServer("rohit: goto cellar");
+        sendCommandToServer("rohit: pay coin");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("shovel"), "Failed: Expected to see 'shovel' after paying coin");
+
+        // Step 7: Pick up the shovel and axe
+        sendCommandToServer("rohit: get shovel");
+        sendCommandToServer("rohit: goto cabin");
+        sendCommandToServer("rohit: get axe");
+        response = sendCommandToServer("rohit: inv");
+        assertTrue(response.contains("shovel") && response.contains("axe"), "Failed: Expected both 'shovel' and 'axe' in inventory");
+
+        // Step 8: Cut the tree and pick up the log
+        sendCommandToServer("rohit: goto forest");
+        sendCommandToServer("rohit: cut tree");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("heavy wooden log"), "Failed: Expected to see 'heavy wooden log' after cutting tree");
+
+        sendCommandToServer("rohit: get log");
+        response = sendCommandToServer("rohit: inv");
+        assertTrue(response.contains("log"), "Failed: Expected 'log' in inventory");
+
+        // Step 9: Cross the river
+        sendCommandToServer("rohit: goto riverbank");
+        sendCommandToServer("rohit: bridge log");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("clearing"), "Failed: Expected 'clearing' to be accessible after bridging the river");
+
+        // Step 10: Dig for treasure
+        sendCommandToServer("rohit: goto clearing");
+        sendCommandToServer("rohit: dig ground with shovel");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("pot of gold"), "Failed: Expected to see 'pot of gold' after digging");
+
+        sendCommandToServer("rohit: get gold");
+        response = sendCommandToServer("rohit: inv");
+        assertTrue(response.contains("gold"), "Failed: Expected 'gold' in inventory");
+
+        // Step 11: Get and use the horn
+        sendCommandToServer("rohit: goto riverbank");
+        sendCommandToServer("rohit: get horn");
+        sendCommandToServer("rohit: blow horn");
+        response = sendCommandToServer("rohit: look");
+        assertTrue(response.contains("burly wood cutter"), "Failed: Expected to summon the 'burly wood cutter' after blowing the horn");
+
+        System.out.println("Adventure story test passed successfully!");
     }
 
-    // Test that we can goto a different location (we won't get very far if we can't move around the game !)
-    @Test
-    void testGoto()
-    {
-        sendCommandToServer("simon: goto forest");
-        String response = sendCommandToServer("simon: look");
-        response = response.toLowerCase();
-        assertTrue(response.contains("key"), "Failed attempt to use 'goto' command to move to the forest - there is no key in the current location");
-    }
-
-    // Add more unit tests or integration tests here.
 
 }
