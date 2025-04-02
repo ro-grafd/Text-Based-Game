@@ -35,12 +35,12 @@ public class GameException extends Exception {
         }
     }
 
-    public static class ResourceLimitation extends GameException {
+    public static class EntitiesResourceLimitation extends GameException {
         @Serial
         private static final long serialVersionUID = 45L;
 
-        public ResourceLimitation() {
-            super("Insufficient or restricted access to ");
+        public EntitiesResourceLimitation() {
+            super("Insufficient or (invalid) restricted access ");
         }
     }
     public static class TriggerException extends GameException {
@@ -83,7 +83,7 @@ public class GameException extends Exception {
         private static final long serialVersionUID = 49L;
 
         public InventoryManagementError() {
-            super("Inventory  failed");
+            super("Inventory get command failed");
         }
     }
 }

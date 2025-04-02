@@ -66,6 +66,7 @@ public final class GameServer {
         } catch (ParserConfigurationException | IOException | SAXException e) {
             throw new RuntimeException(e);
         }
+        this.storeAllEntityKeys();
     }
     public void instantiateMemory() {
         this.locations = new HashMap<>();
@@ -161,9 +162,11 @@ public final class GameServer {
                 {
                     permissableActions.addAll(actions.get(trigger));
                 }
+
                 this.actionHandler = new ActionHandler(permissableActions, this.extractCommand.getTokenisedCommand(),triggerWord);
                 String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
                 this.actionToDo = actionHandler.findToDoAction(this.locations.get(currPlayerLocation), this.players.get(currPlayer).getPersonalInventory());
+                this.handleCommandComplexity(triggerWord);
                 this.executeAction();
         }
     }
@@ -231,6 +234,7 @@ public final class GameServer {
         Set<String> entireArtefacts = this.getEntireGameArtefacts();
         Set<String> accessibleArtefactsInventory = this.players.get(currPlayer).getPersonalInventory().keySet();
         extractCommand.checkForArtefacts(entireArtefacts, accessibleArtefactsInventory);
+        this.handleCommandComplexity("drop");
         Artefact artefactToDrop = this.players.get(currPlayer).getPersonalInventory().get(extractCommand.getArtefact());
         this.players.get(currPlayer).getPersonalInventory().remove(extractCommand.getArtefact());
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
@@ -242,6 +246,7 @@ public final class GameServer {
     }
     public void handleGoto() throws GameException {
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
+        this.handleCommandComplexity("goto");
         this.extractCommand.checkForLocation(this.locations.keySet(), this.locations.get(currPlayerLocation).getAccessibleLocations());
         this.locations.get(currPlayerLocation).getPlayers().remove(currPlayer);
         String toReach = extractCommand.getToReach();
@@ -250,6 +255,7 @@ public final class GameServer {
         this.result = this.locations.get(toReach).toString(currPlayer);
     }
     public void handleLook() throws GameException {
+        this.handleCommandComplexity("look");
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
         this.result = this.locations.get(currPlayerLocation).toString(currPlayer);
     }
@@ -258,6 +264,7 @@ public final class GameServer {
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
         Set<String> accessibleArtefacts = this.locations.get(currPlayerLocation).getArtefacts().keySet();
         this.extractCommand.checkForArtefacts(entireArtefacts,accessibleArtefacts);
+        this.handleCommandComplexity("get");
         Artefact artefact = this.locations.get(currPlayerLocation).getArtefacts().get(extractCommand.getArtefact());
         this.locations.get(currPlayerLocation).getArtefacts().remove(extractCommand.getArtefact());
         this.players.get(currPlayer).addPersonalArtefact(artefact);
@@ -283,7 +290,8 @@ public final class GameServer {
 
         return artefacts;
     }
-    public void handleInventory() {
+    public void handleInventory() throws GameException {
+        this.handleCommandComplexity("inv");
         if(!this.players.get(this.currPlayer).getPersonalInventory().isEmpty())
         {
             StringBuilder stringBuilder = new StringBuilder("You have:\n");
@@ -294,6 +302,58 @@ public final class GameServer {
             this.result = stringBuilder.toString();
         }else {
             this.result = "Got nothing in your inventory mate";
+        }
+    }
+    private void handleCommandComplexity(String trigger) throws GameException {
+        switch(trigger) {
+            case "inv", "inventory", "look", "health":
+                this.foundCommandComplexity(0);
+                break;
+            case "goto", "get", "drop" :
+                this.foundCommandComplexity(1);
+                break;
+            default:
+                this.foundCommandComplexity(this.actionToDo);
+        }
+    }
+    public void storeAllEntityKeys()  {
+        this.entities = new LinkedList<>();
+
+        for (Map.Entry<String, Location> entry : this.locations.entrySet()) {
+            String key = entry.getKey();
+            Location location = entry.getValue();
+
+            Collection<String> availableEntities = location.getAvailableEntities();
+            for (String entity : availableEntities) {
+                this.entities.add(entity);
+            }
+
+            this.entities.add(key);
+        }
+    }
+    private void foundCommandComplexity(int numberOfEntitiesPermitted) throws GameException {
+        HashSet<String> permittedEntities = new HashSet<>();
+        for(String token : this.extractCommand.getTokenisedCommand())
+        {
+            if(this.entities.contains(token)){
+                permittedEntities.add(token);
+            }
+        }
+        if(permittedEntities.size() > numberOfEntitiesPermitted)
+        {
+            throw new GameException.CommandComplexity();
+        }
+    }
+    private void foundCommandComplexity(Action actionToDo) throws GameException {
+        for(String token : this.extractCommand.getTokenisedCommand())
+        {
+            HashSet<String> relevantEntities = new HashSet<>();
+            relevantEntities.addAll(actionToDo.getEntitiesInvolved());
+            relevantEntities.addAll(actionToDo.getEntitiesMade());
+            relevantEntities.addAll(actionToDo.getEntitiesUsed());
+            if(!relevantEntities.contains(token) && this.entities.contains(token)){
+                throw new GameException.EntitiesResourceLimitation();
+            }
         }
     }
     /**
