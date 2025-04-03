@@ -5,26 +5,29 @@ import com.sun.jdi.event.ExceptionEvent;
 import java.util.*;
 
 public class ExtractCommand {
-    String playerName;
-    String rawCommand;
-    String triggerWord;
-    String cookedCommand;
-    List<String> tokenisedCommand;
-    HashSet<String> triggerWordSet;
-    String artefact;
-    String toReach;
+    private String playerName;
+    private String rawCommand;
+    private String triggerWord;
+    private String cookedCommand;
+    private List<String> tokenisedCommand;
+    private HashSet<String> triggerWordSet;
+    private String artefact;
+    private String toReach;
+
     public ExtractCommand(String rawCommand, Set<String> triggerWords) throws GameException.InvalidName {
         this.rawCommand = rawCommand;
         this.extractPlayerName();
         this.removePlayerName();
         this.tokenise(triggerWords);
     }
+
     public void checkForLocation(Set<String> allLocations, Set<String> accessibleLocations) throws GameException{
         this.getEntity(allLocations, "location");
         if(!accessibleLocations.contains(this.toReach)){
             throw new GameException.NavigationError();
         }
     }
+
     public void checkForArtefacts(Set<String> entireArtefacts, Set<String> accessibleArtefacts) throws GameException{
         this.getEntity(entireArtefacts, "artefact");
         boolean itemAvailable = false;
@@ -43,6 +46,7 @@ public class ExtractCommand {
             }
         }
     }
+
     private void getEntity(Set<String> entireArtefacts, String entityName) throws GameException {
         HashSet<String> entities = new HashSet<>();
 
@@ -78,6 +82,7 @@ public class ExtractCommand {
             this.artefact = (String) entities.iterator().next();
         }
     }
+
     public void setTriggerWord(Set<String> givenTriggerWords) throws GameException.TriggerException {
         // search in tokenisedCommand the triggerWord and it should be basic or in the given actions.xml file ???
         // List<String> tokenisedCommand
@@ -100,10 +105,12 @@ public class ExtractCommand {
         }
         this.triggerWord = triggerWordSet.iterator().next();
     }
+
     public String getTriggerWord()
     {
         return triggerWord;
     }
+
     private void tokenise(Set<String> triggerWords) {
         // Initialize tokenisedCommand as a LinkedList if it's not already initialized
         tokenisedCommand = new LinkedList<>();
@@ -185,9 +192,10 @@ public class ExtractCommand {
         this.cookedCommand = this.rawCommand.replaceFirst(this.playerName, "").toLowerCase();
         this.cookedCommand = this.cookedCommand.replaceAll("[^a-z\\s]", " ");
     }
+
     private void extractPlayerName() throws GameException.InvalidName {
         int colonIndex = this.rawCommand.indexOf(':');
-        if (colonIndex != -1)  this.playerName = this.rawCommand.substring(0, colonIndex);
+        if (colonIndex != -1)  this.playerName = this.rawCommand.substring(0, colonIndex).toLowerCase();
         if(this.playerName.matches(".*[^a-zA-Z\\s-'].*")) {
             throw new GameException.InvalidName();
         }
@@ -196,9 +204,10 @@ public class ExtractCommand {
     public String getPlayerName() {
         return playerName;
     }
+
     private boolean isBuiltInCommand(String command) {
         switch (command) {
-            case "inv", "inventory", "get", "drop", "look", "goto":
+            case "inv", "inventory", "get", "drop", "look", "goto", "health":
             {
                 return true;
             }
@@ -207,18 +216,23 @@ public class ExtractCommand {
             }
         }
     }
+
     private boolean isExtra(String command, Set<String> triggerWords) {
         return triggerWords.contains(command);
     }
+
     public String getArtefact() {
         return artefact;
     }
+
     public String getToReach() {
         return toReach;
     }
+
     public HashSet<String> getTriggerWordSet() {
         return triggerWordSet;
     }
+
     public List<String> getTokenisedCommand() {
         return tokenisedCommand;
     }

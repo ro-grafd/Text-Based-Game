@@ -7,11 +7,12 @@ import com.alexmerz.graphviz.objects.Node;
 import java.util.*;
 
 public class Location extends GameEntity{
-    HashMap<String, Furniture> furniture;
-    HashMap<String, Character> characters;
-    HashMap<String, Artefact> artefacts;
-    HashSet<String> players;
-    HashSet<String> accessibleLocations;
+    private HashMap<String, Furniture> furniture;
+    private HashMap<String, Character> characters;
+    private HashMap<String, Artefact> artefacts;
+    private HashSet<String> players;
+    private HashSet<String> accessibleLocations;
+
     public Location(Node details, Graph cluster){
         super(details.getId().getId(), details.getAttribute("description"));
         this.furniture = new HashMap<>();
@@ -21,6 +22,7 @@ public class Location extends GameEntity{
         this.accessibleLocations = new HashSet<>();
         this.addClusterEntities(cluster);
     }
+
     public GameEntity entityConsumed(String command)
     {
         if(this.artefacts.containsKey(command))
@@ -35,6 +37,7 @@ public class Location extends GameEntity{
         }
         return null;
     }
+
     public List<String> getAvailableEntities() {
         List<String> availableEntities = new LinkedList<>();
         availableEntities.add(this.getName());
@@ -43,27 +46,35 @@ public class Location extends GameEntity{
         availableEntities.addAll(this.furniture.keySet());
         return availableEntities;
     }
+
     public void addAccessibleLocation(String location){
         this.accessibleLocations.add(location);
     }
+
     public void removeAccessibleLocation(String location){
         this.accessibleLocations.remove(location);
     }
+
     public HashSet<String> getPlayers(){
         return players;
     }
+
     public HashSet<String> getAccessibleLocations(){
         return accessibleLocations;
     }
+
     public HashMap<String, Furniture> getFurniture(){
         return furniture;
     }
+
     public HashMap<String, Character> getCharacters(){
         return characters;
     }
+
     public HashMap<String, Artefact> getArtefacts(){
         return artefacts;
     }
+
     private void addClusterEntities(Graph cluster){
         List<Graph> clusterEntities = cluster.getSubgraphs();
         for(Graph clusterEntity : clusterEntities){
@@ -85,10 +96,10 @@ public class Location extends GameEntity{
             }
         }
     }
+
     public String toString(String currPlayer) {
         StringBuilder builder = new StringBuilder();
         builder.append("You are in ").append(this.getDescription()).append(".\nYou can see: ");
-
         // Handle furniture items with comma management
         int furnitureCount = 0;
         for (Map.Entry<String, Furniture> entry : this.furniture.entrySet()) {
@@ -98,12 +109,10 @@ public class Location extends GameEntity{
                 builder.append(", ");
             }
         }
-
         // Add comma between furniture and artefacts only if both exist
         if (!this.furniture.isEmpty() && !this.artefacts.isEmpty()) {
             builder.append(", ");
         }
-
         // Handle artefact items with comma management
         int artefactCount = 0;
         for (Map.Entry<String, Artefact> entry : this.artefacts.entrySet()) {
@@ -113,12 +122,10 @@ public class Location extends GameEntity{
                 builder.append(", ");
             }
         }
-
         // Add comma between artefacts and characters only if both exist
         if ((!this.furniture.isEmpty() || !this.artefacts.isEmpty()) && !this.characters.isEmpty()) {
             builder.append(", ");
         }
-
         // Handle character items with comma management
         int characterCount = 0;
         for (Map.Entry<String, Character> entry : this.characters.entrySet()) {
@@ -128,18 +135,14 @@ public class Location extends GameEntity{
                 builder.append(", ");
             }
         }
-
         builder.append("\nOther players at this location:\n");
-
         // Handle players listing
         for (String player : this.players) {
             if (!player.equals(currPlayer)) {
                 builder.append(player).append("\n");
             }
         }
-
         builder.append("You can access from here: ");
-
         // Handle accessible locations with comma management
         int locationCount = 0;
         for (String loc : this.accessibleLocations) {
@@ -149,7 +152,6 @@ public class Location extends GameEntity{
                 builder.append(", ");
             }
         }
-
         return builder.toString();
     }
 }

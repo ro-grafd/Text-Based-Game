@@ -5,11 +5,12 @@ import java.util.HashSet;
 import java.util.List;
 
 public class ActionHandler {
-    String triggerWord;
-    HashSet<Action> canDoActions;
-    HashSet<Action> doActions;
-    List<String> tokens;
-    HashSet<Action> feasibleActions;
+    private String triggerWord;
+    private HashSet<Action> canDoActions;
+    private HashSet<Action> doActions;
+    private List<String> tokens;
+    private HashSet<Action> feasibleActions;
+
     public ActionHandler(HashSet<Action> canDoActions,List<String> tokens,String triggerWord) {
         this.canDoActions = canDoActions;
         this.tokens = tokens;
@@ -17,6 +18,7 @@ public class ActionHandler {
         this.doActions = new HashSet<>();
         this.feasibleActions = new HashSet<>();
     }
+
     public void findFeasibleActions() throws GameException.ContextualConstraint {
         for(Action action: canDoActions) {
             for(String token : tokens) {
@@ -29,6 +31,7 @@ public class ActionHandler {
             throw new GameException.ContextualConstraint();
         }
     }
+
     public Action findToDoAction(Location location, HashMap<String, Artefact> personalInventory) throws GameException.ContextualConstraint {
         this.findFeasibleActions();
         for(Action action: feasibleActions) {
