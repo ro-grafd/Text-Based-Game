@@ -5,11 +5,12 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 public class Action
 {
-    HashSet<String> entitiesInvolved;
-    HashSet<String> entitiesUsed;
-    HashSet<String> entitiesMade;
-    HashSet<String> triggers;
-    String actionStatement;
+    private HashSet<String> entitiesInvolved;
+    private HashSet<String> entitiesUsed;
+    private HashSet<String> entitiesMade;
+    private HashSet<String> triggers;
+    private String actionStatement;
+    
     public Action(Element actionElement)
     {
         this.entitiesInvolved = new HashSet<>();
@@ -22,6 +23,7 @@ public class Action
         this.constructSet(entitiesMade, "produced", "entity", actionElement);
         this.actionStatement = actionElement.getElementsByTagName("narration").item(0).getTextContent();
     }
+
     private void constructSet(HashSet<String>setToConstruct, String outerTag, String innerTag, Element actionElement)
     {
         Element outerTags = (Element)actionElement.getElementsByTagName(outerTag).item(0);
@@ -43,9 +45,11 @@ public class Action
     public HashSet<String> getEntitiesMade() {
         return entitiesMade;
     }
+
     public HashSet<String> getTriggers() {
         return triggers;
     }
+
     public String getActionStatement() {
         return actionStatement;
     }

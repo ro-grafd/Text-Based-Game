@@ -4,6 +4,7 @@ import com.alexmerz.graphviz.*;
 import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
+import com.alexmerz.graphviz.objects.Id;
 import com.alexmerz.graphviz.objects.Node;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -22,17 +23,17 @@ import java.util.*;
 public final class GameServer {
 
     private static final char END_OF_TRANSMISSION = 4;
-    File entitiesFile, actionsFile;
-    HashMap<String, Location> locations;
-    HashMap<String, Player> players;
-    HashMap<String, HashSet<Action>> actions;
-    String spawnLocation;
-    String currPlayer;
-    String result;
-    ExtractCommand extractCommand;
-    ActionHandler actionHandler;
-    Action actionToDo;
-    List<String> entities;
+    private File entitiesFile, actionsFile;
+    private HashMap<String, Location> locations;
+    private HashMap<String, Player> players;
+    private HashMap<String, HashSet<Action>> actions;
+    private String spawnLocation;
+    private String currPlayer;
+    private String result;
+    private ExtractCommand extractCommand;
+    private ActionHandler actionHandler;
+    private Action actionToDo;
+    private List<String> entities;
 
     public static void main(String[] args) throws IOException, ParseException, ParserConfigurationException, SAXException {
         File entitiesFile = Paths.get("config" + File.separator + "extended-entities.dot").toAbsolutePath().toFile();
@@ -55,6 +56,7 @@ public final class GameServer {
         this.instantiateMemory();
         this.readFiles();
     }
+
     public void readFiles()  {
         try {
             this.readEntitiesFile();
@@ -68,12 +70,14 @@ public final class GameServer {
         }
         this.storeAllEntityKeys();
     }
+
     public void instantiateMemory() {
         this.locations = new HashMap<>();
         this.players = new HashMap<>();
         this.actions = new HashMap<>();
         this.result = "";
     }
+
     public void readEntitiesFile() throws FileNotFoundException, ParseException {
         Parser parser = new Parser();
         FileReader fileReader = new FileReader(this.entitiesFile);
@@ -86,6 +90,23 @@ public final class GameServer {
         for(Graph cluster: locationClusters){
             Node node = cluster.getNodes(false).get(0);
             this.locations.put(node.getId().getId().toLowerCase(), new Location(node, cluster));
+        }
+        // If Entities doesn't have storeroom
+        if(!locations.containsKey("storeroom")) {
+            Node storeroomNode = new Node();
+            Id storeroomId = new Id();
+            storeroomId.setId("storeroom");
+            storeroomNode.setId(storeroomId);
+            storeroomNode.setAttribute("description", "Custom Storeroom mate");
+
+            Graph storeroomCluster = new Graph();
+            Id clusterId = new Id();
+            clusterId.setId("cluster999");
+            storeroomCluster.setId(clusterId);
+
+            storeroomCluster.addNode(storeroomNode);
+            this.locations.put("storeroom", new Location(storeroomNode, storeroomCluster));
+            locationClusters.add(storeroomCluster); // no use as such but mehhh looks good and satisfies the OCD !!!
         }
         for(Edge connection: connections){
             Node source = connection.getSource().getNode();
@@ -104,7 +125,6 @@ public final class GameServer {
         NodeList actions = root.getChildNodes();
         for(int i = 1; i < actions.getLength(); i+=2) {
             Action currentAction = new Action((Element)actions.item(i));
-            //map action to trigger phrases
             for(String keyPhrase: currentAction.getTriggers()) {
                 if(!this.actions.containsKey(keyPhrase)) {
                     this.actions.put(keyPhrase, new HashSet<>());
@@ -135,7 +155,6 @@ public final class GameServer {
         }
         return this.result;
     }
-//    ./mvnw exec:java@client -Dexec.args="rohit"
 
     public void performAction()  throws GameException {
         String triggerWord = this.extractCommand.getTriggerWord();
@@ -156,27 +175,46 @@ public final class GameServer {
             case "drop":
                 this.handleDrop();
                 break;
+            case "health":
+                this.handleHealth();
+                break;
             default:
-                HashSet<Action> permissableActions = new HashSet<>();
+                HashSet<Action> permissibleActions = new HashSet<>();
                 for(String trigger : extractCommand.getTriggerWordSet())
                 {
-                    permissableActions.addAll(actions.get(trigger));
+                    permissibleActions.addAll(actions.get(trigger));
                 }
-
-                this.actionHandler = new ActionHandler(permissableActions, this.extractCommand.getTokenisedCommand(),triggerWord);
+                this.actionHandler = new ActionHandler(permissibleActions, this.extractCommand.getTokenisedCommand(),triggerWord);
                 String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
                 this.actionToDo = actionHandler.findToDoAction(this.locations.get(currPlayerLocation), this.players.get(currPlayer).getPersonalInventory());
                 this.handleCommandComplexity(triggerWord);
                 this.executeAction();
         }
     }
+
+    public void handleHealth() throws GameException {
+        this.handleCommandComplexity("health");
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("You have ");
+        stringBuilder.append(this.players.get(currPlayer).getHealth());
+        stringBuilder.append(" health point(s) remaining");
+        this.result = stringBuilder.toString();
+    }
+
     public void executeAction() {
         HashSet<String> consumed = this.actionToDo.getEntitiesUsed();
         HashSet<String> produced = this.actionToDo.getEntitiesMade();
         this.handleConsumedProduced(true, consumed);
         this.handleConsumedProduced(false,produced);
         this.result = this.actionToDo.getActionStatement();
+        if(this.players.get(currPlayer).getHealth() == 0)
+        {
+            this.result = "you died and lost all of your items, you must return to the start of the game";
+            String killedLocation = this.players.get(currPlayer).getPresentLocation();
+            this.players.get(currPlayer).killPlayer(spawnLocation, this.locations.get(killedLocation));
+        }
     }
+
     public void handleConsumedProduced(boolean hasConsumed, HashSet<String> consumed) {
         String locationForConsumed;
         if(hasConsumed){
@@ -187,11 +225,17 @@ public final class GameServer {
         for(String consumedWord: consumed){
             if(this.players.get(currPlayer).getPersonalInventory().containsKey(consumedWord) && hasConsumed){
                 Artefact toRemove = this.players.get(currPlayer).getPersonalInventory().remove(consumedWord);
-            }else{
+                this.addEntityToLocation(locationForConsumed, toRemove);
+            } else if(consumedWord.equals("health"))
+            {
+                this.players.get(currPlayer).changeHealth(hasConsumed);
+            }
+            else{
                 this.handleEntityState(consumedWord, hasConsumed, locationForConsumed);
             }
         }
     }
+
     public void handleEntityState(String entityName, boolean hasConsumed, String locationForConsumed) {
         GameEntity consumedEntity = null;
         for (Map.Entry<String, Location> entry : this.locations.entrySet()) {
@@ -214,6 +258,7 @@ public final class GameServer {
             this.addEntityToLocation(locationForConsumed, consumedEntity);
         }
     }
+
     public void addEntityToLocation(String locationForConsumed, GameEntity consumedEntity) {
         Location location = this.locations.get(locationForConsumed);
         if(consumedEntity != null) {
@@ -230,6 +275,7 @@ public final class GameServer {
             }
         }
     }
+
     public void handleDrop() throws GameException {
         Set<String> entireArtefacts = this.getEntireGameArtefacts();
         Set<String> accessibleArtefactsInventory = this.players.get(currPlayer).getPersonalInventory().keySet();
@@ -244,6 +290,7 @@ public final class GameServer {
         builder.append(artefactToDrop.getName());
         this.result = builder.toString();
     }
+
     public void handleGoto() throws GameException {
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
         this.handleCommandComplexity("goto");
@@ -254,11 +301,13 @@ public final class GameServer {
         this.locations.get(toReach).getPlayers().add(currPlayer);
         this.result = this.locations.get(toReach).toString(currPlayer);
     }
+
     public void handleLook() throws GameException {
         this.handleCommandComplexity("look");
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
         this.result = this.locations.get(currPlayerLocation).toString(currPlayer);
     }
+
     public void handleGet() throws GameException {
         Set<String> entireArtefacts = this.getEntireGameArtefacts();
         String currPlayerLocation = this.players.get(currPlayer).getPresentLocation();
@@ -273,6 +322,7 @@ public final class GameServer {
         builder.append(artefact.getName());
         this.result = builder.toString();
     }
+
     private Set<String> getEntireGameArtefacts() {
         Set<String> artefacts = new HashSet<>();
 
@@ -290,6 +340,7 @@ public final class GameServer {
 
         return artefacts;
     }
+
     public void handleInventory() throws GameException {
         this.handleCommandComplexity("inv");
         if(!this.players.get(this.currPlayer).getPersonalInventory().isEmpty())
@@ -304,6 +355,7 @@ public final class GameServer {
             this.result = "Got nothing in your inventory mate";
         }
     }
+
     private void handleCommandComplexity(String trigger) throws GameException {
         switch(trigger) {
             case "inv", "inventory", "look", "health":
@@ -316,6 +368,7 @@ public final class GameServer {
                 this.foundCommandComplexity(this.actionToDo);
         }
     }
+
     public void storeAllEntityKeys()  {
         this.entities = new LinkedList<>();
 
@@ -331,6 +384,7 @@ public final class GameServer {
             this.entities.add(key);
         }
     }
+
     private void foundCommandComplexity(int numberOfEntitiesPermitted) throws GameException {
         HashSet<String> permittedEntities = new HashSet<>();
         for(String token : this.extractCommand.getTokenisedCommand())
@@ -344,6 +398,7 @@ public final class GameServer {
             throw new GameException.CommandComplexity();
         }
     }
+
     private void foundCommandComplexity(Action actionToDo) throws GameException {
         for(String token : this.extractCommand.getTokenisedCommand())
         {
