@@ -4,6 +4,8 @@ import com.sun.jdi.event.ExceptionEvent;
 
 import java.util.*;
 
+// Class for getting all the information of the command
+// like all the tokens, raw command, processed command and stuff
 public class ExtractCommand {
     private String playerName;
     private String rawCommand;
@@ -49,15 +51,11 @@ public class ExtractCommand {
 
     private void getEntity(Set<String> entireArtefacts, String entityName) throws GameException {
         HashSet<String> entities = new HashSet<>();
-
-        // Replace forEach with traditional for loop
         for (String token : tokenisedCommand) {
             if (isExtra(token, entireArtefacts)) {
                 entities.add(token);
             }
         }
-
-        // Multiple entities check
         if (entities.size() > 1) {
             if (entityName.equals("location")) {
                 throw new GameException.NavigationError();
@@ -65,8 +63,6 @@ public class ExtractCommand {
                 throw new GameException.InventoryManagementError();
             }
         }
-
-        // Empty entities check
         if (entities.isEmpty()) {
             if (entityName.equals("location")) {
                 throw new GameException.NavigationError();
@@ -74,12 +70,10 @@ public class ExtractCommand {
                 throw new GameException.InventoryManagementError();
             }
         }
-
-        // Set destination or artefact
         if (entityName.equals("location")) {
-            this.toReach = (String) entities.iterator().next();
+            this.toReach =  entities.iterator().next();
         } else {
-            this.artefact = (String) entities.iterator().next();
+            this.artefact = entities.iterator().next();
         }
     }
 
@@ -117,8 +111,6 @@ public class ExtractCommand {
         String command = this.cookedCommand.trim();
         List<String> words = new LinkedList<>(); // Temporary list for processing
         StringBuilder word = new StringBuilder();
-
-        // Manually split the string into words
         for (char c : command.toCharArray()) {
             if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
                 if (word.length() > 0) {
@@ -132,31 +124,21 @@ public class ExtractCommand {
         if (word.length() > 0) {
             words.add(word.toString());
         }
-
-        // Merging adjacent words based on triggers
         boolean changed = true;
         while (changed) {
             changed = false;
             Iterator<String> iterator = words.iterator();
             if (!iterator.hasNext()) continue;
-
             String current = iterator.next();
             while (iterator.hasNext()) {
                 String next = iterator.next();
-
-                // Use StringBuilder instead of string concatenation
                 StringBuilder combinedToken = new StringBuilder(current);
                 combinedToken.append(" ").append(next);
-
                 if (triggerWords.contains(combinedToken.toString())) {
-                    // Remove both tokens
                     iterator.remove(); // Removes 'next'
-
-                    // Need to rebuild the list without 'current' and with the new combined token
                     List<String> newWords = new LinkedList<>();
                     Iterator<String> rebuildIterator = words.iterator();
                     boolean addedCombined = false;
-
                     while (rebuildIterator.hasNext()) {
                         String token = rebuildIterator.next();
                         if (token == current && !addedCombined) {
@@ -165,22 +147,16 @@ public class ExtractCommand {
                             rebuildIterator.remove();
                         }
                     }
-
-                    // Add any remaining tokens
                     for (String token : words) {
                         newWords.add(token);
                     }
-
                     words = newWords;
                     changed = true;
                     break;
                 }
-
                 current = next;
             }
         }
-
-        // Set tokenisedCommand to the processed words
         for (String token : words) {
             tokenisedCommand.add(token);
         }

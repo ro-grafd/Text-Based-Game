@@ -3,13 +3,18 @@ package edu.uob;
 import java.util.HashSet;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+
+// Any specific Action provided by the player to perform
+// So any action what it will include, stuff that it is influencing
+// so entities involved, entities used, entities made, and the trigger word set
+// and yes actionStatement as in what would the action would do
 public class Action
 {
-    private HashSet<String> entitiesInvolved;
-    private HashSet<String> entitiesUsed;
-    private HashSet<String> entitiesMade;
-    private HashSet<String> triggers;
-    private String actionStatement;
+    private final HashSet<String> entitiesInvolved;
+    private final HashSet<String> entitiesUsed;
+    private final HashSet<String> entitiesMade;
+    private final HashSet<String> triggers;
+    private final String actionStatement;
     
     public Action(Element actionElement)
     {

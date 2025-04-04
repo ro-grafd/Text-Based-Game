@@ -23,7 +23,8 @@ import java.util.*;
 public final class GameServer {
 
     private static final char END_OF_TRANSMISSION = 4;
-    private File entitiesFile, actionsFile;
+    private final File entitiesFile;
+    private final File actionsFile;
     private HashMap<String, Location> locations;
     private HashMap<String, Player> players;
     private HashMap<String, HashSet<Action>> actions;
@@ -36,8 +37,8 @@ public final class GameServer {
     private List<String> entities;
 
     public static void main(String[] args) throws IOException, ParseException, ParserConfigurationException, SAXException {
-        File entitiesFile = Paths.get("config" + File.separator + "extended-entities.dot").toAbsolutePath().toFile();
-        File actionsFile = Paths.get("config" + File.separator + "extended-actions.xml").toAbsolutePath().toFile();
+        File entitiesFile = Paths.get(String.format("config%sextended-entities.dot", File.separator)).toAbsolutePath().toFile();
+        File actionsFile = Paths.get(String.format("config%sextended-actions.xml", File.separator)).toAbsolutePath().toFile();
         GameServer server = new GameServer(entitiesFile, actionsFile);
         server.blockingListenOn(8888);
     }
@@ -53,8 +54,8 @@ public final class GameServer {
         // TODO implement your server logic here
         this.entitiesFile = entitiesFile;
         this.actionsFile = actionsFile;
-        this.instantiateMemory();
-        this.readFiles();
+        this.instantiateMemory();   // initialise all the Data Structures
+        this.readFiles();           // For reading both the .dot and .xml files
     }
 
     public void readFiles()  {
@@ -91,7 +92,6 @@ public final class GameServer {
             Node node = cluster.getNodes(false).get(0);
             this.locations.put(node.getId().getId().toLowerCase(), new Location(node, cluster));
         }
-        // If Entities doesn't have storeroom
         if(!locations.containsKey("storeroom")) {
             Node storeroomNode = new Node();
             Id storeroomId = new Id();
@@ -201,7 +201,7 @@ public final class GameServer {
         this.result = stringBuilder.toString();
     }
 
-    public void executeAction() {
+    public void executeAction() throws GameException{
         HashSet<String> consumed = this.actionToDo.getEntitiesUsed();
         HashSet<String> produced = this.actionToDo.getEntitiesMade();
         this.handleConsumedProduced(true, consumed);
@@ -262,16 +262,14 @@ public final class GameServer {
     public void addEntityToLocation(String locationForConsumed, GameEntity consumedEntity) {
         Location location = this.locations.get(locationForConsumed);
         if(consumedEntity != null) {
+            if(consumedEntity instanceof Artefact) {
+                location.getArtefacts().put(consumedEntity.getName(), (Artefact)consumedEntity);
+            }else if(consumedEntity instanceof Character)
             {
-                if(consumedEntity instanceof Artefact) {
-                    location.getArtefacts().put(consumedEntity.getName(), (Artefact)consumedEntity);
-                }else if(consumedEntity instanceof Character)
-                {
-                    location.getCharacters().put(consumedEntity.getName(), (Character)consumedEntity);
-                }else if(consumedEntity instanceof Furniture)
-                {
-                    location.getFurniture().put(consumedEntity.getName(), (Furniture)consumedEntity);
-                }
+                location.getCharacters().put(consumedEntity.getName(), (Character)consumedEntity);
+            }else if(consumedEntity instanceof Furniture)
+            {
+                location.getFurniture().put(consumedEntity.getName(), (Furniture)consumedEntity);
             }
         }
     }
@@ -325,19 +323,14 @@ public final class GameServer {
 
     private Set<String> getEntireGameArtefacts() {
         Set<String> artefacts = new HashSet<>();
-
-        // Iterate through locations
         for (Map.Entry<String, Location> locationEntry : this.locations.entrySet()) {
             Location location = locationEntry.getValue();
             artefacts.addAll(location.getArtefacts().keySet());
         }
-
-        // Iterate through players
         for (Map.Entry<String, Player> playerEntry : this.players.entrySet()) {
             Player player = playerEntry.getValue();
             artefacts.addAll(player.getPersonalInventory().keySet());
         }
-
         return artefacts;
     }
 
@@ -371,16 +364,13 @@ public final class GameServer {
 
     public void storeAllEntityKeys()  {
         this.entities = new LinkedList<>();
-
         for (Map.Entry<String, Location> entry : this.locations.entrySet()) {
             String key = entry.getKey();
             Location location = entry.getValue();
-
             Collection<String> availableEntities = location.getAvailableEntities();
             for (String entity : availableEntities) {
                 this.entities.add(entity);
             }
-
             this.entities.add(key);
         }
     }
@@ -420,10 +410,10 @@ public final class GameServer {
     */
     public void blockingListenOn(int portNumber) throws IOException {
         try (ServerSocket s = new ServerSocket(portNumber)) {
-            System.out.println("Server listening on port " + portNumber);
+            System.out.println(String.format("Server listening on port %d", portNumber));
             while (!Thread.interrupted()) {
                 try {
-                    blockingHandleConnection(s);
+                    this.blockingHandleConnection(s);
                 } catch (IOException e) {
                     System.out.println("Connection closed");
                 }
@@ -445,10 +435,10 @@ public final class GameServer {
             System.out.println("Connection established");
             String incomingCommand = reader.readLine();
             if(incomingCommand != null) {
-                System.out.println("Received message from " + incomingCommand);
-                String result = handleCommand(incomingCommand);
+                System.out.println(String.format("Received message from %s", incomingCommand));
+                String result = this.handleCommand(incomingCommand);
                 writer.write(result);
-                writer.write("\n" + END_OF_TRANSMISSION + "\n");
+                writer.write(String.format("\n%s\n", END_OF_TRANSMISSION));
                 writer.flush();
             }
         }
