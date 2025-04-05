@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+// All the necessary function needed to figure which would be the appropriate Action to
+// perform coz there can multiple action which can be performed with a specific trigger-word
+// we need to find which is the most reasonable one
 public class ActionHandler {
     private String triggerWord;
     private HashSet<Action> canDoActions;

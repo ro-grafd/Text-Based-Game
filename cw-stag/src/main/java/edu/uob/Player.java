@@ -3,10 +3,12 @@ package edu.uob;
 import java.util.HashMap;
 import java.util.Map;
 
+// All the relevant information about a player like its name, its current location, its inventory at any
+// given instant and obviously health coz if HP fear is not in the game them what's the thrill of even playing??
 public class Player {
-    private String name;
+    private final String name;
     private String presentLocation;
-    private HashMap<String,Artefact> personalInventory;
+    private final HashMap<String,Artefact> personalInventory;
     private int health;
 
     public Player(String name, String presentLocation) {

@@ -6,12 +6,15 @@ import com.alexmerz.graphviz.objects.Node;
 
 import java.util.*;
 
+// Well, what all a specific location has, the elf , the tree , cupboard whatever can be in a location will be
+// bound to this information below and well yes all the other location you can access to its name as well but not the
+// Location rather just a string of it
 public class Location extends GameEntity{
-    private HashMap<String, Furniture> furniture;
-    private HashMap<String, Character> characters;
-    private HashMap<String, Artefact> artefacts;
-    private HashSet<String> players;
-    private HashSet<String> accessibleLocations;
+    private final HashMap<String, Furniture> furniture;
+    private final HashMap<String, Character> characters;
+    private final HashMap<String, Artefact> artefacts;
+    private final HashSet<String> players;
+    private final HashSet<String> accessibleLocations;
 
     public Location(Node details, Graph cluster){
         super(details.getId().getId(), details.getAttribute("description"));
@@ -23,7 +26,7 @@ public class Location extends GameEntity{
         this.addClusterEntities(cluster);
     }
 
-    public GameEntity entityConsumed(String command)
+    public GameEntity entityConsumed(String command)    // whatever we consumed we will room it from the location
     {
         if(this.artefacts.containsKey(command))
         {
@@ -75,7 +78,7 @@ public class Location extends GameEntity{
         return artefacts;
     }
 
-    private void addClusterEntities(Graph cluster){
+    private void addClusterEntities(Graph cluster){         // For adding all the stuff from our entities
         List<Graph> clusterEntities = cluster.getSubgraphs();
         for(Graph clusterEntity : clusterEntities){
             String clusterEntityId = clusterEntity.getId().getId();
@@ -97,6 +100,7 @@ public class Location extends GameEntity{
         }
     }
 
+    // Big function to print all the entities that a specific location has which we are printing using StringBuilder
     public String toString(String currPlayer) {
         StringBuilder builder = new StringBuilder();
         builder.append("You are in ").append(this.getDescription()).append(".\nYou can see: ");
